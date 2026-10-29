@@ -11,6 +11,7 @@
   },
   "files": [
     "lib/",
+    "assets/",
     "cordis.patch.yml",
     "README.md",
     "LICENSE"
@@ -37,7 +38,8 @@
     "node": "^22.19.0 || >=24.0.0"
   },
   "scripts": {
-    "test": "node tools/test-routes.mjs"
+    "test": "node tools/test-routes.mjs",
+    "check:art": "node tools/build-art.mjs --check"
   },
   "dsh": {
     "bundle": {

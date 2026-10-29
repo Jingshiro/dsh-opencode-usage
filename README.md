@@ -6,6 +6,9 @@ OpenCode GO 配额挂件 — 一个 [DeepSeek Harness](https://github.com/deepse
 列出 **滚动 5h / 本周 / 本期** 三个窗口的进度条、重置时间和倒计时；聊天里还有 `/opencode-go`
 命令可以随手打一行。
 
+卡片顶上还有一条**峰谷提示**：现在处于 DeepSeek 的峰价还是谷价、距下次切换还有多久，
+背景是一张 50% 透明度的 Q 版（谷期举牌笑，峰期托腮省着用）。
+
 数据来自 **官方接口**（不是抓 dashboard、不需要浏览器 cookie）：
 
 ```
@@ -87,6 +90,27 @@ _官方 /zen/go/v1/usage · percent = 已用 · key 来自 file · 30s 缓存_
 命令注册用的是 **可选子作用域**（`ctx.inject(["commands"], …)`）：万一某个环境里没有 commands
 服务，命令静静不注册，挂件和路由照常。`inject` 里因此只有 `webServer` 和 `credentials` 两个硬依赖。
 
+## 峰谷提示
+
+DeepSeek 的价格按时段浮动，OpenCode Go 的价目表也照这个分两档（`DeepSeek V4.1 Flash (Off-Peak)` /
+`(Peak)`），峰价正好是谷价的 2 倍。卡片顶上那条提示就是按这个规则算的：
+
+| 时段 | 北京时间 | 卡片长什么样 |
+| --- | --- | --- |
+| **峰期** | 周一至周五 09:00–12:00、14:00–18:00 | 橙点 · 「现在是峰期 · 省点用」，背景是托腮那张 |
+| **谷期** | 其余全部时间，含周末 | 绿点 · 「现在是谷期 · 使劲蹬」，背景是举牌那张 |
+
+<p>
+  <img src="assets/chibi-offpeak.webp" width="150" alt="谷期：举牌笑">
+  <img src="assets/chibi-peak.webp" width="150" alt="峰期：托腮省着用">
+</p>
+
+两张 Q 版以 base64 内嵌在 `lib/client.js` 里（`assets/*.webp` → `node tools/build-art.mjs`），
+安装即用、不多一次请求；卡片里以 50% 透明度铺在头部，往下渐隐到卡片底色，不影响进度条和文字。
+
+**已知取舍**：官方把**中国法定节假日**也算作谷期，这里没有节假日日历，节假日会按普通工作日判断
+（只影响这条提示语，不影响任何计费）。要精确到节假日，改 `lib/client.js` 里的 `isPeakAt()` 即可。
+
 ## 结构
 
 一个包，两个半边（标准 DSH 双面插件）：
@@ -94,7 +118,8 @@ _官方 /zen/go/v1/usage · percent = 已用 · key 来自 file · 30s 缓存_
 | 半边 | 文件 | 干什么 |
 | --- | --- | --- |
 | 宿主 (Node) | `lib/index.js` | 注册 `GET /api/opencode-usage/usage[?fresh=true]` 和 `/ping`，用 `ctx.credentials.resolve()` 取 key，代理上游并做 30s 缓存 |
-| 浏览器 | `lib/client.js` | 手写 `window.__ModuleLoader__.load` 包：`sidebar.footer.action` 挂件 + `shell.overlay` 详情卡，60s 轮询、页面隐藏时不请求 |
+| 浏览器 | `lib/client.js` | 手写 `window.__ModuleLoader__.load` 包：`sidebar.footer.action` 挂件 + `shell.overlay` 详情卡，60s 轮询、页面隐藏时不请求；卡片顶部的峰谷提示和 Q 版背景也在这里 |
+| 素材 | `assets/*.webp` | 两张 Q 版原图，由 `tools/build-art.mjs` 以 base64 内嵌进 `lib/client.js` |
 | 挂载 | `cordis.patch.yml` | `dsh.bundle.patch` 声明的挂载行，`dsh plugin add` 自动接线 |
 
 `package.json` 里 `dsh.client.platform = "web"`，DSH 的 client-modules 会把 `./client`
@@ -112,6 +137,8 @@ _官方 /zen/go/v1/usage · percent = 已用 · key 来自 file · 30s 缓存_
 
 ```sh
 node tools/test-routes.mjs     # 假 ctx 跑 apply()，ping / 404 / usage / 缓存 / 命令 全打一遍
+node tools/build-art.mjs       # 改了 assets/*.webp 之后，重新内嵌进 lib/client.js
+node tools/build-art.mjs --check  # 只检查内嵌图和 assets 是否一致（CI 用）
 ```
 
 注意：这条测试会**真的请求一次上游**（只读、不消耗额度），key 从环境变量或
