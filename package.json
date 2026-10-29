@@ -1,7 +1,7 @@
 {
   "name": "dsh-opencode-usage",
-  "version": "1.0.0",
-  "description": "OpenCode GO quota widget for the DeepSeek Harness web GUI: rolling 5h / weekly / monthly usage in the sidebar, read from the official /zen/go/v1/usage endpoint.",
+  "version": "1.1.0",
+  "description": "OpenCode GO quota widget for the DeepSeek Harness web GUI: rolling 5h / weekly / monthly usage in the sidebar, with a peak/off-peak hint driven by the Chinese statutory holiday calendar.",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -39,7 +39,8 @@
     "node": "^22.19.0 || >=24.0.0"
   },
   "scripts": {
-    "test": "node tools/test-routes.mjs",
+    "test": "node tools/test-peak.mjs",
+    "test:routes": "node tools/test-routes.mjs",
     "check:art": "node tools/build-art.mjs --check"
   },
   "dsh": {

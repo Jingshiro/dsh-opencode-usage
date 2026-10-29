@@ -69,6 +69,9 @@ refs:
     routePrefix: /api/opencode-usage      # 同源路由前缀
     cacheMs: 30000                        # 上游缓存（路由和命令共用）
     timeoutMs: 15000                      # 单次上游超时
+    holidayUrl: https://cdn.jsdelivr.net/gh/NateScarlet/holiday-cn@master/{year}.json
+    holidayUrlAlt: https://raw.githubusercontent.com/NateScarlet/holiday-cn/master/{year}.json
+    holidayCacheMs: 43200000              # 节假日日历缓存（12h）
 ```
 
 ## 聊天命令
@@ -109,8 +112,33 @@ DeepSeek 的价格按时段浮动，OpenCode Go 的价目表也照这个分两�
 以 base64 内嵌在 `lib/client.js` 中（`node tools/build-art.mjs` 重新生成），安装即用、不多一次请求；
 卡片里以 50% 透明度单独占一块，不和进度条抢位置。
 
-**已知取舍**：官方把**中国法定节假日**也算作谷期，这里没有节假日日历，节假日会按普通工作日判断
-（只影响这条提示语，不影响任何计费）。要精确到节假日，改 `lib/client.js` 里的 `isPeakAt()` 即可。
+**已知取舍**：官方把**中国法定节假日**也算作谷期——现在这条已经真的接上了日历（见下节），
+不再靠"按普通工作日判断"。节假日日历取不到时（比如两台都连不上），会退回"工作日/周末"的
+判断，卡片页脚写「节假日日历未取到（按工作日算）」，只影响提示语，不影响任何计费。
+
+## 节假日日历
+
+| 时段 | 北京时间 | 卡片长什么样 |
+| --- | --- | --- |
+| **峰期** | 工作日 09:00–12:00、14:00–18:00 | 橙点「现在是峰期」+ 距转谷倒计时 |
+| **谷期（周末/节假日）** | 其余全部时间 | 绿点「现在是谷期」+ 距转峰倒计时；节假日会带上名字（如「现在是谷期 · 国庆节」） |
+
+日历由**宿主半边**现拉、按年缓存，浏览器不直连数据源：
+
+```
+GET /api/opencode-usage/holidays?year=2026
+→ { ok: true, year: 2026, source: "…", fetchedAt: "…", error: null,
+    days: [{ date: "2026-10-01", name: "国庆节", off: true }, …] }
+```
+
+* 数据源：[`NateScarlet/holiday-cn`](https://github.com/NateScarlet/holiday-cn)（纯数据仓库，一年一个 JSON，
+  社区维护、按国务院通知更新）。先走 jsDelivr CDN，失败退 GitHub raw；两个地址都可配。
+* 宿主按年缓存 12 小时，失败也缓存 10 分钟再试；浏览器同时要今年和明年两张（跨年那周也算得对），6 小时刷一次。
+* **调休上班日**（`off: false`，周末但官方指定上班）：价目表只写了「法定节假日」，没提调休，
+  所以这里默认仍按周末（谷期）算。哪天官方真按工作日计费，把 `lib/client.js` 里的
+  `MAKEUP_WORKDAY_IS_PEAK` 改成 `true` 即可。
+* 峰谷这段是自包含的纯逻辑（`/* peak-logic:start|end */` 圈出来），`tools/test-peak.mjs` 会整块
+  抽出来在 node 里跑单测——不碰 DOM，也不用开浏览器。
 
 ## 结构
 
@@ -118,7 +146,7 @@ DeepSeek 的价格按时段浮动，OpenCode Go 的价目表也照这个分两�
 
 | 半边 | 文件 | 干什么 |
 | --- | --- | --- |
-| 宿主 (Node) | `lib/index.js` | 注册 `GET /api/opencode-usage/usage[?fresh=true]` 和 `/ping`，用 `ctx.credentials.resolve()` 取 key，代理上游并做 30s 缓存 |
+| 宿主 (Node) | `lib/index.js` | 注册 `GET /api/opencode-usage/usage[?fresh=true]`、`/holidays?year=` 和 `/ping`，用 `ctx.credentials.resolve()` 取 key，代理上游并做 30s 缓存；节假日日历按年缓存 12h |
 | 浏览器 | `lib/client.js` | 手写 `window.__ModuleLoader__.load` 包：`sidebar.footer.action` 挂件 + `shell.overlay` 详情卡，60s 轮询、页面隐藏时不请求；卡片顶部的峰谷提示和 Q 版背景也在这里 |
 | 素材 | `assets/*.webp` | 两张 Q 版原图，由 `tools/build-art.mjs` 以 base64 内嵌进 `lib/client.js` |
 | 挂载 | `cordis.patch.yml` | `dsh.bundle.patch` 声明的挂载行，`dsh plugin add` 自动接线 |
@@ -132,18 +160,20 @@ DeepSeek 的价格按时段浮动，OpenCode Go 的价目表也照这个分两�
 * API key 只在 **宿主机** 解析，只发给 opencode 官方网关；不进浏览器、不进日志、不进仓库。
 * 路由返回的只有三个窗口的 `percent` / `resetsAt` / `status`，外加 `keySource`
   （`env` 还是 `file`）——不返回 key 本身，连前后几位都不给。
-* 没有遥测、没有外发请求，除 `/zen/go/v1/usage` 之外不联系任何地方。
+* 没有遥测。除了 opencode 官方网关，唯一的外部请求是拉节假日日历（jsDelivr / GitHub raw，
+  只读、公开数据、不带任何凭据）；日历取不到不影响挂件其它部分。
 
 ## 开发与测试
 
 ```sh
-node tools/test-routes.mjs     # 假 ctx 跑 apply()，ping / 404 / usage / 缓存 / 命令 全打一遍
-node tools/build-art.mjs       # 改了 assets/*.webp 之后，重新内嵌进 lib/client.js
+node tools/test-peak.mjs          # 峰谷 + 节假日纯逻辑单测（不联网、不碰 DOM）
+node tools/test-routes.mjs        # 假 ctx 跑 apply()，ping / 404 / usage / holidays / 缓存 / 命令 全打一遍
+node tools/build-art.mjs          # 改了 assets/*.webp 之后，重新内嵌进 lib/client.js
 node tools/build-art.mjs --check  # 只检查内嵌图和 assets 是否一致（CI 用）
 ```
 
-注意：这条测试会**真的请求一次上游**（只读、不消耗额度），key 从环境变量或
-`~/.dsh/.credentials.yaml` 的 `refs` 读；没有 key 时"凭据缺失"那些断言仍会跑。
+注意：`test-routes.mjs` 会**真的请求一次上游**（只读、不消耗额度）和一次节假日 JSON，
+key 从环境变量或 `~/.dsh/.credentials.yaml` 的 `refs` 读；没有 key 时"凭据缺失"那些断言仍会跑。
 
 ## 已知取舍
 

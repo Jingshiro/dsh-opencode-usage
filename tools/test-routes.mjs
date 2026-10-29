@@ -13,7 +13,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const home = process.env.DSH_HOME || join(process.env.USERPROFILE || process.env.HOME || "", ".dsh");
 const profile = process.argv[2] || process.env.DSH_PROFILE || "web";
 
-const deployed = join(home, "profiles", profile, "node_modules", "dsh-opencode-usage", "lib", "index.js");
+const deployed = join(home, "profiles", profile, "node_modules", "@local", "dsh-opencode-usage", "lib", "index.js");
 const source = resolve(here, "..", "lib", "index.js");
 const target = existsSync(deployed) ? deployed : source;
 console.log((target === deployed ? "测运行时拷贝 " : "测源码 ") + target + "\n");
@@ -103,6 +103,24 @@ const check = (label, ok, extra) => {
 	const second = await call("/api/opencode-usage/usage");
 	const j2 = JSON.parse(second.body);
 	check("第二次命中 30s 缓存", j2.cached === true, "cached=" + j2.cached);
+}
+
+// ── 节假日日历（挂件那条峰谷提示用） ────────────────────────────────────────
+{
+	const res = await call("/api/opencode-usage/holidays?year=2026");
+	let json = null;
+	try { json = JSON.parse(res.body); } catch {}
+	const days = (json && json.days) || [];
+	check("holidays 200 + 有 days", res.status === 200 && json.ok === true && days.length > 0,
+		"n=" + days.length + " source=" + (json && json.source));
+	const national = days.find((d) => d.date === "2026-10-01");
+	check("10-01 标成放假", !!national && national.off === true, national ? national.name : "缺");
+	const makeup = days.find((d) => d.date === "2026-10-10");
+	check("10-10 标成调休上班", !!makeup && makeup.off === false, makeup ? makeup.name : "缺");
+	const again = JSON.parse((await call("/api/opencode-usage/holidays?year=2026")).body);
+	check("第二次命中宿主机缓存（fetchedAt 不变）", again.fetchedAt === json.fetchedAt, again.fetchedAt);
+	const outOfRange = await call("/api/opencode-usage/holidays?year=1990");
+	check("年份越界退回今年（不炸）", outOfRange.status === 200, "status=" + outOfRange.status);
 }
 
 // ── 聊天命令 ────────────────────────────────────────────────────────────────
