@@ -1,0 +1,55 @@
+{
+  "name": "dsh-opencode-usage",
+  "version": "1.0.0",
+  "description": "OpenCode GO quota widget for the DeepSeek Harness web GUI: rolling 5h / weekly / monthly usage in the sidebar, read from the official /zen/go/v1/usage endpoint.",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib/",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "dsh",
+    "agent-harness",
+    "plugin",
+    "opencode",
+    "quota",
+    "usage",
+    "web",
+    "ui"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Jingshiro/dsh-opencode-usage.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Jingshiro/dsh-opencode-usage/issues"
+  },
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "scripts": {
+    "test": "node tools/test-routes.mjs"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [],
+      "immediately": true
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.2"
+  }
+}

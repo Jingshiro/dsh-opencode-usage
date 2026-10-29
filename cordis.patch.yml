@@ -1,0 +1,24 @@
+# dsh-opencode-usage bundle patch: mounts the usage widget into the web profile.
+#
+# The host half (lib/index.js) registers GET /api/opencode-usage/usage and
+# /api/opencode-usage/ping; the browser half (lib/client.js) contributes the
+# sidebar widget and the detail card. The loader discovers the browser half
+# through the package's `dsh.client` declaration, so the bundle only needs this
+# one mount row.
+#
+# The API key is never written here:
+#   OPENCODE_GO_API_KEY —— $DSH_HOME/.credentials.yaml (refs), or $DSH_HOME/.env,
+#                          or the process environment. Read by the host half on
+#                          every request; the browser never sees it.
+#
+# To override the defaults, add the same id/name row to your profile's
+# cordis.patch.yml with a config block:
+#   - id: opencode-usage
+#     name: dsh-opencode-usage
+#     config:
+#       baseUrl: https://opencode.ai/zen/go
+#       keyRef: OPENCODE_GO_API_KEY
+
+- insert:
+    - id: opencode-usage
+      name: dsh-opencode-usage
