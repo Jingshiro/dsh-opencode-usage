@@ -97,15 +97,15 @@ DeepSeek 的价格按时段浮动，OpenCode Go 的价目表也照这个分两�
 
 | 时段 | 北京时间 | 卡片长什么样 |
 | --- | --- | --- |
-| **峰期** | 周一至周五 09:00–12:00、14:00–18:00 | 橙点 · 「现在是峰期 · 省点用」，背景是托腮那张 |
-| **谷期** | 其余全部时间，含周末 | 绿点 · 「现在是谷期 · 使劲蹬」，背景是举牌那张 |
+| **峰期** | 周一至周五 09:00–12:00、14:00–18:00 | 橙点 ·「现在是峰期」+ 距转谷倒计时，图是托腮那张（云朵里写「省点用」） |
+| **谷期** | 其余全部时间，含周末 | 绿点 ·「现在是谷期」+ 距转峰倒计时，图是举牌那张（牌子上写「使劲蹬！」） |
 
 <p>
   <img src="docs/screenshot-offpeak.png" width="190" alt="谷期：卡片顶部是举牌的 Q 版">
   <img src="docs/screenshot-peak.png" width="190" alt="峰期：卡片顶部是托腮的 Q 版">
 </p>
 
-两张 Q 版原图在 `assets/` 里（<img src="assets/chibi-offpeak.webp" width="14" alt=""> 举牌、<img src="assets/chibi-peak.webp" width="14" alt=""> 托腮），
+两张 Q 版原图在 [`assets/`](assets/)（[举牌](assets/chibi-offpeak.webp) / [托腮](assets/chibi-peak.webp)），
 以 base64 内嵌在 `lib/client.js` 中（`node tools/build-art.mjs` 重新生成），安装即用、不多一次请求；
 卡片里以 50% 透明度单独占一块，不和进度条抢位置。
 
