@@ -101,12 +101,13 @@ DeepSeek 的价格按时段浮动，OpenCode Go 的价目表也照这个分两�
 | **谷期** | 其余全部时间，含周末 | 绿点 · 「现在是谷期 · 使劲蹬」，背景是举牌那张 |
 
 <p>
-  <img src="assets/chibi-offpeak.webp" width="150" alt="谷期：举牌笑">
-  <img src="assets/chibi-peak.webp" width="150" alt="峰期：托腮省着用">
+  <img src="docs/screenshot-offpeak.png" width="190" alt="谷期：卡片顶部是举牌的 Q 版">
+  <img src="docs/screenshot-peak.png" width="190" alt="峰期：卡片顶部是托腮的 Q 版">
 </p>
 
-两张 Q 版以 base64 内嵌在 `lib/client.js` 里（`assets/*.webp` → `node tools/build-art.mjs`），
-安装即用、不多一次请求；卡片里以 50% 透明度铺在头部，往下渐隐到卡片底色，不影响进度条和文字。
+两张 Q 版原图在 `assets/` 里（<img src="assets/chibi-offpeak.webp" width="14" alt=""> 举牌、<img src="assets/chibi-peak.webp" width="14" alt=""> 托腮），
+以 base64 内嵌在 `lib/client.js` 中（`node tools/build-art.mjs` 重新生成），安装即用、不多一次请求；
+卡片里以 50% 透明度单独占一块，不和进度条抢位置。
 
 **已知取舍**：官方把**中国法定节假日**也算作谷期，这里没有节假日日历，节假日会按普通工作日判断
 （只影响这条提示语，不影响任何计费）。要精确到节假日，改 `lib/client.js` 里的 `isPeakAt()` 即可。
